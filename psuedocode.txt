@@ -1,0 +1,80 @@
+START
+
+import psutil
+import socket
+import platform
+import logging
+import usbmonitor
+import proxmoxmanager
+
+#MAIN FUNCTIONS
+Create core_server_info function
+	use psutil, platform and proxmoxmanager modules
+	grab and output the following information:
+	datacenter
+	active vms
+	unactive vms
+	total vms
+	
+	name of device
+	processor name
+	cpu usage
+	total memory
+	memory usage
+	storage usage
+	storage total
+	totalstorage - storageuse = leftover storage
+
+Create network_info function
+	use socket module
+	grabs and prints out the following:
+	Name
+	IPV4 address
+	IPV6 address
+	state
+	link/ether
+
+Create backup_info function
+	use proxmoxmanager module
+	grabs and prints out the following:
+	enabled
+	scheduled time
+	next backup
+	storage location
+	create a list of the VMs included in this backup
+
+Create virtual_machine_info function
+	use psutil, platform and proxmoxmanager modules
+
+
+Create logging_file function
+	uses the logging module
+
+#HELPER FUNCTIONS
+Create usb_monitor function
+	run usb-monitor module to detect usb
+	if there is, say yes
+	else, say no and run email_admin function
+
+Create time_scheduler function
+	grab the system's date and time
+
+Create vm_activity function
+	this function should check
+	and see if a vm goes down or up
+	calls the email_admin function
+
+Create email_admin function (takes in string)
+	create string value for  basic email
+	append taken-in string to email
+	send email to specified address
+
+#RUN THE PROGRAM
+Create main function
+
+
+
+if __name__ == __main__
+	main()
+
+END

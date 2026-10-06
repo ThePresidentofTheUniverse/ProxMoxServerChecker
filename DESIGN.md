@@ -78,6 +78,7 @@ Node: pve
 Operating System: Ubuntu Linux
 Start at Boot: Yes
 Status: Running
+IP Address: 192.168.1.203
 
 Processors Usage: 0.15%
 Total Processors: 4
@@ -87,7 +88,7 @@ Memory Amount Technical: 2GB
 Storage Usage: 1GB
 Total Storage: 10GB
 
-USB Device - No
+USB Device Detected - No
 \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 
 ```

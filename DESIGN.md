@@ -21,7 +21,47 @@ For the currently planned modules, I will use the following:
 - logging (https://docs.python.org/3/library/logging.html)
 
 For the warnings, here is the kind of warnings I would want:
+- I would like to be notified if CPU increases to 25% or higher
+- I would like to be notified if the Memory goes past 80% and also check 60% as well.
+- I would like to be notified if a VM is started and stopped.
+- I would like to know when the external hard-drive has disconnected itself.
+- I would like a warning when the log files are getting above a certain storage amount.
 
+Here is the final report I want to get printed out:
+
+```
+===================================================
+POTU's SERVER CHECKER UTILITY
+USE ONLY ON PROXMOX SERVICES
+===================================================
+
+CORE SERVER INFORMATION
+---------------------------------------------------
+DataCenter: DATACENTER NAME
+
+Active Virtual Machines: 8
+Deactivated Virtual Mahcines: 2
+Total Virtal Machines: 10
+
+Device Name: homelab
+Processor: AMD what-ever its called
+Overall CPU Usage: 10%
+Memory: 32GB
+Overall Memory Usage: 70%
+Overall Storage Usage: 20GB out of 50GB used
+Left-Over Storage: 30GB left
+
+NETWORK SYSTEM INFORMATION
+---------------------------------------------------
+IPV4 Address: 127.0.0.1
+IPV6 Address: hexa-decimal stuff I don't feel like writing out
+
+VIRTUAL MACHINES TECHNICAL INFORMATION
+---------------------------------------------------
+Virtual Machine Name: NGINXReverseProxy
+
+
+```
 
 Since this is for my own home-lab server, these are the things that I would like to check or pull information from and throw into some kind of dashboard.
 

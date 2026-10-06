@@ -27,7 +27,7 @@ For the warnings, here is the kind of warnings I would want:
 - I would like to know when the external hard-drive has disconnected itself.
 - I would like a warning when the log files are getting above a certain storage amount.
 
-Here is the final report I want to get printed out:
+Here is the planned concept I have for a report I want to get printed out to a log file:
 
 ```
 ===================================================
@@ -37,7 +37,7 @@ USE ONLY ON PROXMOX SERVICES
 
 CORE SERVER INFORMATION
 ---------------------------------------------------
-DataCenter: DATACENTER NAME
+DataCenter: Datacenter
 
 Active Virtual Machines: 8
 Deactivated Virtual Mahcines: 2
@@ -51,15 +51,44 @@ Overall Memory Usage: 70%
 Overall Storage Usage: 20GB out of 50GB used
 Left-Over Storage: 30GB left
 
+BACKUP INFORMATION
+---------------------------------------------------
+Enabled: Yes
+Scheduled: Monthly
+Next Run: 2026-11-01
+Storage Location: local
+Selection of VMs included: 100,101,102,103,105
+
 NETWORK SYSTEM INFORMATION
 ---------------------------------------------------
+Name: vmbr0
 IPV4 Address: 127.0.0.1
 IPV6 Address: hexa-decimal stuff I don't feel like writing out
+State: Up
+Link/Ether: hexa-decimal stuff I don't feel like writing out
 
 VIRTUAL MACHINES TECHNICAL INFORMATION
 ---------------------------------------------------
-Virtual Machine Name: NGINXReverseProxy
 
+/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+ID: 103
+Virtual Machine Name: NGINXReverseProxy
+Node: pve
+
+Operating System: Ubuntu Linux
+Start at Boot: Yes
+Status: Running
+
+Processors Usage: 0.15%
+Total Processors: 4
+Memory Usage Percentage: 63%
+Memory Usage Technical: 1.26GB 
+Memory Amount Technical: 2GB
+Storage Usage: 1GB
+Total Storage: 10GB
+
+USB Device - No
+\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 
 ```
 

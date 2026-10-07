@@ -1,0 +1,3 @@
+Official ProxMox API: https://pve.proxmox.com/pve-docs/api-viewer/
+
+Proxmoxer documentation: https://proxmoxer.github.io/docs/latest/

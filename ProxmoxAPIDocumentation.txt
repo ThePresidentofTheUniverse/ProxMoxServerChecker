@@ -1,3 +1,56 @@
 Official ProxMox API: https://pve.proxmox.com/pve-docs/api-viewer/
 
 Proxmoxer documentation: https://proxmoxer.github.io/docs/latest/
+
+NOTICE: During the learning process, I did use artificial intelligence to assist with
+the learning and understanding of how to work with this in Proxmox, as well as how to
+test in without having to worry about breaking anything.
+
+Something I am going to test when I have access to Proxmox
+
+
+1. The "Print-Only" / Dry-Run Approach (Simplest)
+
+If you want to see the real data your Proxmox server returns without modifying anything, write your script defensively by separating your data gathering from your actions.
+You can implement a DRY_RUN flag:
+python
+from proxmoxer import ProxmoxAPI
+
+# Set to True for testing, False for production
+DRY_RUN = True  
+
+proxmox = ProxmoxAPI(backend='local')
+
+# 1. READ DATA (Safe to do anytime)
+for vm in proxmox.nodes('pve').qemu.get():
+    # Print the exact data block returned by Proxmox to inspect it
+    print(f"Inspecting VM data: {vm}") 
+    
+    # 2. PROTECT MUTATING ACTIONS
+    if vm['status'] == 'stopped' and vm['name'] == 'test-template':
+        if DRY_RUN:
+            print(f"[DRY-RUN] Would have started VM {vm['vmid']} ({vm['name']})")
+        else:
+            # This actually executes in production
+            proxmox.nodes('pve').qemu(vm['vmid']).status.start.post() 
+
+2. Inspecting the exact data structures via Python Interactive Shell
+
+If your primary goal is just seeing what information you are pulling, don't write a full script yet. Open up your Proxmox server's command line and launch the interactive Python shell:
+bash
+sudo python3
+Use code with caution.
+Then, copy and paste these commands line-by-line to see live, pretty-printed data structures:
+python
+import json
+from proxmoxer import ProxmoxAPI
+
+proxmox = ProxmoxAPI(backend='local')
+
+# Get all nodes and pretty print the JSON response
+nodes_data = proxmox.nodes.get()
+print(json.dumps(nodes_data, indent=4))
+
+# Get a specific VM's configuration data
+vm_config = proxmox.nodes('pve').qemu('100').config.get()
+print(json.dumps(vm_config, indent=4))

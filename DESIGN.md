@@ -65,7 +65,6 @@ Name: vmbr0
 IPV4 Address: 127.0.0.1
 IPV6 Address: hexa-decimal stuff I don't feel like writing out
 State: Up
-Link/Ether: hexa-decimal stuff I don't feel like writing out
 
 VIRTUAL MACHINES TECHNICAL INFORMATION
 ---------------------------------------------------

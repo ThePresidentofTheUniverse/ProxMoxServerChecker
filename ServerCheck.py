@@ -9,14 +9,13 @@
 import psutil as ps
 import socket as sock 
 import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
-import proxmoxmanager as pmm #even though this is for managing, keeping it in just in-case
 import platform as plat
 import logging as log
 import usbmonitor as monitor
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
 
 #Create global var that allows this program to access the backend of ProxMox server locally.
-#moxer = ProxmoxAPI(backend='local')
+moxer = ProxmoxAPI(backend='local')
 
 #MAIN FUNCTIONS
 #This pulls the information from the actual system
@@ -42,22 +41,58 @@ def core_server_info():
     deactive = 0
     total = 0
     #For-loop that checks the status of each VM
-   # for vm in moxer.nodes('pve').qemu.get():
-   #     if vm['status'] == 'stopped':
-   #         deactive += 1
-   #     else:
-   #         active += 1
-   #     total += 1
+    for vm in moxer.nodes('pve').qemu.get():
+        if vm['status'] == 'stopped':
+            deactive += 1
+        else:
+           active += 1
+        total += 1
 
+    #returning all of the information
     return device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used
     
-
 #This pulls the network information of the main system
 def network_info(hostname):
     #pulling local IPV4 address
-    ipv4 = sock.gethostbyname(hostname)
+    try:
+        ipv4 = sock.gethostbyname(hostname)
+    except sock.gaierror as e:
+        ipv4 = f"lookup failed - {e}"
 
-    return ipv4
+    #Attempting to pull the IPV6 address
+    try:
+        results = sock.getaddrinfo(
+            hostname,
+            None,
+            family=sock.AF_INET6,
+            type=sock.SOCK_STREAM
+        )
+        ipv6 = list({
+            result[4][0] for result in results
+        })
+    except sock.gaierror as e:
+        ipv6 = f"lookup failed - {e}"
+
+    return ipv4, ipv6
+
+#This is code that can probably work to get the IPV6 address, but it uses the name of the interface, which I would like to grab dynamically instead.
+#def network_info():
+    #interface = "vmbr0"
+    #ipv4 = None
+    #ipv6 = []
+
+    #addresses = psutil.net_if_addrs().get(interface, [])
+
+    #for addr in addresses:
+    #    if addr.family == socket.AF_INET:
+    #        ipv4 = addr.address
+     #   elif addr.family == socket.AF_INET6:
+            # Remove the scope suffix if present
+      #      address = addr.address.split("%")[0]
+       #     if address not in ipv6:
+        #        ipv6.append(address)
+
+    #return ipv4, ipv6
 
 #This grabs the information regarding the state of the systems current backup
 #def backup_info():
@@ -114,12 +149,9 @@ def main():
     print(f"Selection of VMs Included: ")
 
     print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
-    ipv4 = network_info(device_name)
-    print(f"Name: ")
+    ipv4, ipv6 = network_info(device_name)
     print(f"IPV4 Address: {ipv4}")
-    print(f"IPV6 Address: ")
-    print(f"State: ")
-    print(f"Link/Ether: ")
+    print(f"IPV6 Address: {ipv6}")
 
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
 

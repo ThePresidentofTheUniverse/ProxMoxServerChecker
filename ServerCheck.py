@@ -11,11 +11,17 @@ import socket as sock
 import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
 import platform as plat
 import logging as log
-import usbmonitor as monitor
+from usbmonitor import USBMonitor
+from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR_ID #Pulls metadata information from the USB.
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
+#Modules for sending out an email.
+import smtplib
+import ssl
+from getpass import getpass
+from email.message import EmailMessage
 
 #Create global var that allows this program to access the backend of ProxMox server locally.
-moxer = ProxmoxAPI(backend='local')
+#moxer = ProxmoxAPI(backend='local')
 
 #MAIN FUNCTIONS
 #This pulls the information from the actual system
@@ -41,12 +47,12 @@ def core_server_info():
     deactive = 0
     total = 0
     #For-loop that checks the status of each VM
-    for vm in moxer.nodes('pve').qemu.get():
-        if vm['status'] == 'stopped':
-            deactive += 1
-        else:
-           active += 1
-        total += 1
+  #  for vm in moxer.nodes('pve').qemu.get():
+   #     if vm['status'] == 'stopped':
+   #         deactive += 1
+   #     else:
+    #       active += 1
+    #    total += 1
 
     #returning all of the information
     return device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used
@@ -107,7 +113,18 @@ def network_info(hostname):
 #HELPER FUNCTIONS
 
 #This function is used with virtual_machine_info to verify if the usb in the vm is detected.
-#def usb_monitor():
+def usb_monitor():
+    # Create the USBMonitor instance
+    monitor = USBMonitor()
+
+    # Get the current devices
+    devices_dict = monitor.get_available_devices()
+
+    # Print them
+    for device_id, device_info in devices_dict.items():
+     print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
+   
+    
 
 #This is a function for scheduling the programs timing
 #def time_scheduler():
@@ -116,7 +133,29 @@ def network_info(hostname):
 #def vm_activity():
 
 #This is a function that sends out emails.
-#def email_admin(subject):
+def email_admin(subject, sender_email, debug):
+    #Designed to test locally.
+    if debug:
+        smtp_server = "localhost"
+        port = 8025
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.send_message(subject)
+
+    #designed to run in prod
+    try:
+        smtp_server = "smtp.gmail.com"
+        port = 465 #define the standard secure SMTP port
+        password = "wbba sxrt xqri gdxi" #The password used from my gmail account to allow emails to be sent.
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(
+            smtp_server, port, context=context,
+        ) as server:
+            server.login(sender_email, password)
+            server.send_message(subject)
+    except (smtplib.SMTPException, OSError) as e:
+        print(f"Email failed to send: {e}")
+        raise
 
 # Sets everything up to run
 def main():
@@ -154,6 +193,20 @@ def main():
     print(f"IPV6 Address: {ipv6}")
 
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
+    usb_monitor()
+
+    sender_email = "njabbott0126@gmail.com"
+    receiver_email = "njabbott2005@gmail.com"
+
+    #All this stuff here is to send out an email
+    message = EmailMessage()
+    message["to"] = receiver_email
+    message["from"] = sender_email
+    message["subject"] = "test message"
+    message.set_content("This is a test message")
+
+    debug = False
+    email_admin(message, sender_email, debug)
 
 # Lets the program run
 if __name__ == "__main__":

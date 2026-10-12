@@ -11,7 +11,8 @@ import socket as sock
 import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
 import platform as plat
 import logging as log
-from usbmonitor import USBMonitor
+from datetime import datetime
+from usbmonitor import USBMonitor #Used to detect usb devices
 from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR_ID #Pulls metadata information from the USB.
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
 #Modules for sending out an email.
@@ -21,7 +22,7 @@ from getpass import getpass
 from email.message import EmailMessage
 
 #Create global var that allows this program to access the backend of ProxMox server locally.
-#moxer = ProxmoxAPI(backend='local')
+moxer = ProxmoxAPI(backend='local')
 
 #MAIN FUNCTIONS
 #This pulls the information from the actual system
@@ -47,12 +48,12 @@ def core_server_info():
     deactive = 0
     total = 0
     #For-loop that checks the status of each VM
-  #  for vm in moxer.nodes('pve').qemu.get():
-   #     if vm['status'] == 'stopped':
-   #         deactive += 1
-   #     else:
-    #       active += 1
-    #    total += 1
+    for vm in moxer.nodes('pve').qemu.get():
+        if vm['status'] == 'stopped':
+            deactive += 1
+        else:
+           active += 1
+        total += 1
 
     #returning all of the information
     return device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used
@@ -101,10 +102,42 @@ def network_info(hostname):
     #return ipv4, ipv6
 
 #This grabs the information regarding the state of the systems current backup
-#def backup_info():
+def backup_info():
+    #The term 'get' is used because terminology between different versions of Proxmox vary.
+
+    #run through each backup and pull is information
+    for job in moxer.cluster.backup.get():
+        enabled = bool(job.get("enabled", 1)) #pulls the data of if the backup is enabled
+        schedule = job.get("schedule") or f'{job.get("dow", "?")} {job.get("starttime", "?")}' #Grabs the data for occurence of backup.
+        storage = job.get("storage") #Grabs the storage location of the backup
+
+        #Grabs the time of when the next run is going to occur
+        next_run = job.get("next-run")
+        next_run = datetime.fromtimestamp(next_run).isoformat() if next_run else "n/a"
+
+        #The if-else statement below grabs the scope of the virtual machines included in the backup. This is where different terminology is seen.
+        if job.get("all"):
+            scope = "All guests" + (f" (excluding {job['exclude']})" if job.get("exclude") else "")
+        elif job.get("pool"):
+            scope = f"Pool: {job['pool']}"
+        else:
+            scope = f"VMIDs: {job.get('vmid', 'none')}"
+        
+        retention = retention_amount(job)
+
+        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+        print(f"Backup ID: {job['id']}")
+        print(f"Enabled: {enabled}")
+        print(f"Scheduled: {schedule}")
+        print(f"Backup Retention: {retention}")
+        print(f"Next Run: {next_run}")
+        print(f"Storage Location: {storage}")
+        print(f"Selection of VMs Included: {scope}")
+        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
 
 #This runs through each virtual machine and grabs their data.
-#def virtual_machine_info():
+def virtual_machine_info():
+    #TODO: This is going to be tough. Will need to create several helper functions for this to work.
 
 #This grabs some of the data from above and compiles it into a log file
 #def logging_file():
@@ -122,9 +155,23 @@ def usb_monitor():
 
     # Print them
     for device_id, device_info in devices_dict.items():
-     print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
-   
-    
+        print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
+
+#This is a function for reading wthe retention for backups
+def retention_amount(job):
+    #Depending on which version of Proxmox you are using, the retention is either stored as prune or as max. Max is the older version.
+    retention = job.get("prune-backups")
+    if retention:
+        keep_last = int(retention.get("keep-last", 0))
+        #Certain versions will return a dictionary of data to work with
+        if isinstance(retention, str):
+            retention = dict(r.split("=") for r in retention.split(","))
+            return retention
+        #returns the amount of backups stored.
+        return keep_last
+    if "maxfiles" in job:
+        return {"keep-last": int(job["maxfiles"])}
+    return None #Falls back to default storage if nothing is returned
 
 #This is a function for scheduling the programs timing
 #def time_scheduler():
@@ -145,7 +192,7 @@ def email_admin(subject, sender_email, debug):
     try:
         smtp_server = "smtp.gmail.com"
         port = 465 #define the standard secure SMTP port
-        password = "wbba sxrt xqri gdxi" #The password used from my gmail account to allow emails to be sent.
+        password = "Insert Password here" #The password used from my gmail account to allow emails to be sent.
 
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(
@@ -179,13 +226,8 @@ def main():
     print(f"Overall Storage Usage: {storage_used}GB out of {storage_total}GB used")
     print(f"Left-Over Storage: {round((storage_total - storage_used), 2)}GB left")
 
-    print("\nBACKUP INFORMATION\n----------------------------------------------------")
-    print(f"Enabled: ")
-    print(f"Scheduled: ")
-    print(f"Total Backups that can be Stored: ")
-    print(f"Next Run: ")
-    print(f"Storage Location: ")
-    print(f"Selection of VMs Included: ")
+    print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
+    backup_info()
 
     print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
     ipv4, ipv6 = network_info(device_name)
@@ -195,8 +237,8 @@ def main():
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
     usb_monitor()
 
-    sender_email = "njabbott0126@gmail.com"
-    receiver_email = "njabbott2005@gmail.com"
+    sender_email = "sends out email"
+    receiver_email = "receives the email"
 
     #All this stuff here is to send out an email
     message = EmailMessage()
@@ -206,7 +248,7 @@ def main():
     message.set_content("This is a test message")
 
     debug = False
-    email_admin(message, sender_email, debug)
+    #email_admin(message, sender_email, debug)
 
 # Lets the program run
 if __name__ == "__main__":

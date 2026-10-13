@@ -6,7 +6,7 @@ This program is designed to allow home-labbers to quickly check a homelab runnin
 ## Maintainer(s)
 Nolan Abbott - https://github.com/ThePresidentofTheUniverse
 
-## Modules to Install
+## Modules to Install & Requirements
 There are several modules that need to be installed for this program to function. Please install the following modules shown below:
 - psutil - https://psutil.readthedocs.io/stable/
 - cpuinfo - https://pypi.org/project/py-cpuinfo/
@@ -14,6 +14,11 @@ There are several modules that need to be installed for this program to function
 - proxmoxer - https://github.com/proxmoxer/proxmoxer
 - aiosmtpd - https://aiosmtpd.aio-libs.org/en/latest/
 The aiosmtpd module above is so you can test the email system locally. To conduct local testing, find the debug in the main function and set it to *True*.
+
+**NOTICE:** This program was built off of the idea that you are only running Virtual Machines on your device, if containers are being ran, this could cause issues with the program attempting to run.
+
+## Program Features
+This is a large script that essentially pulls a large amount of information from a home-lab running ProxMox
 
 # Configuring the Email SMTP Service
 If you are wanting to see the SMTP service fully functional instead of running it in debug, do the following steps below:
@@ -40,5 +45,13 @@ Here is the raw information that can be outputted when this program is ran:
 ```
 null
 ```
+
+## Problems & Solutions
+
+**USB is Pulling Host and Not Name:** If you are seeing the output of the *USB Devices Detected* showing something along the lines of *['Host : 4-3']*, this is most likely due to how you have your USB device connected to the VM in ProxMox. To setup your USB device properly, do the following below in the *Hardware* section of the VM:
+1. Remove the old USB Device connection if not already done.
+2. Select *Add* then select *USB Device*
+3. Select the *Use USB Vendor/Device ID*
+4. Select the relevant USB device you want to connect and select the *Add* option.
 
 ## Artificial Intelligence Usage

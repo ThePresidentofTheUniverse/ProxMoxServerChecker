@@ -12,9 +12,11 @@ import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
 import platform as plat
 import logging as log
 from datetime import datetime
+import re #Used to determine if there is a USB device on the VM
 from usbmonitor import USBMonitor #Used to detect usb devices
-from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR_ID #Pulls metadata information from the USB.
+from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR, ID_VENDOR_ID #Pulls metadata information from the USB.
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
+from proxmoxer.core import ResourceException #In case information is not able to found for on reason or another.
 #Modules for sending out an email.
 import smtplib
 import ssl
@@ -136,26 +138,84 @@ def backup_info():
         print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
 
 #This runs through each virtual machine and grabs their data.
-def virtual_machine_info():
-    #TODO: This is going to be tough. Will need to create several helper functions for this to work.
+def virtual_machine_info(devices):
+    guests = moxer.cluster.resources.get(type="vm") #Grabs the information of all VMs
+    for guest in guests: #For loop that prints out the information of each VM
+        #Grabs a series of information that are used through-out the outputting process.
+        vmid = guest["vmid"] #Declare ID here because of OS information
+        node = guest["node"] #Declare Node here because of OS information
+        status = guest["status"]#Declares status here because of OS information
+        vtype = guest["type"] #Only used to grab os information.
+
+        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+        print(f"ID: {vmid}")
+        print(f"VM Name: {guest.get("name")}")
+        print(f"Node: {node}\n")
+        try: 
+            #Attempts to grab the operating System information
+            cfg = moxer.nodes(node).__getattr__(vtype)(vmid).config.get()#Designed to be used for VMs, does not work with containers.
+        except:
+            cfg = "I am broken."
+        print(f"Operating System: {grab_os_information(moxer, node, vmid, vtype, cfg) if status == "running" else cfg.get("ostype")}")
+        print(f"Start at Boot: {cfg.get("onboot", 0)}")
+        print(f"Status: {status}")
+        print(f"Processor Usage: {round((guest["cpu"] * 100), 2)}") #Math equation to get CPU usage
+        print(f"Total Processors: {cfg.get("cores")}")
+        print(f"Memory Usage Percentage: {memory_percentage(guest)}%") #Weird equation to get memory in percentage.
+        print(f"Memory Usage Technical: {round((guest["mem"] / 1073741824), 2)}GB") #bytes to gb conversion
+        print(f"Memory Allotted: {round((guest["maxmem"] / 1073741824), 2)}GB") #bytes to gb conversion
+        print(f"USB Device Detected: {grab_usb_devices(cfg, devices)}")
+        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+        print(f"\n")
 
 #This grabs some of the data from above and compiles it into a log file
 #def logging_file():
 
-
-#HELPER FUNCTIONS
-
-#This function is used with virtual_machine_info to verify if the usb in the vm is detected.
-def usb_monitor():
+#-------------------------
+# USB Monitoring Functions
+#-------------------------
+#This function is used to determine what kind of USB devices are detected on the machine.
+def usb_monitor():   
     # Create the USBMonitor instance
     monitor = USBMonitor()
 
     # Get the current devices
     devices_dict = monitor.get_available_devices()
 
-    # Print them
-    for device_id, device_info in devices_dict.items():
-        print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
+    return devices_dict
+
+#This function is used to parse the host information
+def parse_usb(val):
+    host = next((p.split("=", 1)[1] for p in val.split(",") if p.startswith("host=")), None) #Finding the raw host name
+    if host and ":" in host:
+        vid, pid = host.lower().split(":") #Converting it something usable to relate the name to the USB device
+        return vid.zfill(4), pid.zfill(4)
+    return None, None # If nothing is found
+
+def find_usb_name(vid, pid, monitor_devices):
+    for dev in monitor_devices.values():
+        #Associating the name of the device to the information parsed in parse_usb
+        dev_vid = str(dev.get(ID_VENDOR_ID, "")).lower().replace("0x", "").zfill(4)
+        dev_pid = str(dev.get(ID_MODEL_ID, "")).lower().replace("0x", "").zfill(4)
+        if dev_vid == vid and dev_pid == pid:
+            return dev.get(ID_MODEL) or dev.get(ID_VENDOR) or f"{vid}:{pid}"
+    return f"{vid}:{pid}" #In-case the above fails, this just attempts to return raw.
+
+#This is a function used to combine the other functions above and show-off the usb-devices.
+def grab_usb_devices(cfg, monitor_devices):
+    devices = [] #in-case there are multiple devices
+    for key, val in cfg.items():
+        if re.match(r"^usb\d+$", key):
+            vid, pid = parse_usb(val)
+            devices.append(find_usb_name(vid, pid, monitor_devices) if vid else val) #This should return something like 3=4 or 1=2
+    if not devices:
+        return "No Devices Detected"
+    else:
+        return devices
+
+#----------------
+#HELPER FUNCTIONS
+#----------------
 
 #This is a function for reading wthe retention for backups
 def retention_amount(job):
@@ -173,8 +233,22 @@ def retention_amount(job):
         return {"keep-last": int(job["maxfiles"])}
     return None #Falls back to default storage if nothing is returned
 
-#This is a function for scheduling the programs timing
-#def time_scheduler():
+#This is a function designed to grab the operating system information from a virtual machine
+def grab_os_information(moxer, node, vmid, vtype, cfg):
+    if vtype == "qemu":
+        try:
+            info = moxer.nodes(node).qemu(vmid).agent("get-osinfo").get()
+            return info["result"].get("pretty-name")
+        except ResourceException:
+            pass
+    return cfg.get("ostype") #Fallback to the coarse config value.
+
+#This function is used to grab the memory percentage of the virtual machines
+def memory_percentage(guest):
+    max = guest.get("maxmem", 0)
+    if not max:
+        return 0.0
+    return round(guest.get("mem", 0) / max * 100, 2)
 
 #This is a function used to check if a VM goes down or up
 #def vm_activity():
@@ -226,6 +300,15 @@ def main():
     print(f"Overall Storage Usage: {storage_used}GB out of {storage_total}GB used")
     print(f"Left-Over Storage: {round((storage_total - storage_used), 2)}GB left")
 
+    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+    print("\nList of Detected USB Devices\n")
+    devices = usb_monitor()
+    # Print the USB devices
+    for device_id, device_info in devices.items():
+        print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
+
+    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+
     print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
     backup_info()
 
@@ -235,7 +318,8 @@ def main():
     print(f"IPV6 Address: {ipv6}")
 
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
-    usb_monitor()
+
+    virtual_machine_info(devices)
 
     sender_email = "sends out email"
     receiver_email = "receives the email"

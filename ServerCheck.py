@@ -14,6 +14,7 @@ import logging as log
 from datetime import datetime
 import re #Used to determine if there is a USB device on the VM
 from usbmonitor import USBMonitor #Used to detect usb devices
+from aiosmtpd import smtp #Used to conduct local testing
 from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR, ID_VENDOR_ID #Pulls metadata information from the USB.
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
 from proxmoxer.core import ResourceException #In case information is not able to found for on reason or another.

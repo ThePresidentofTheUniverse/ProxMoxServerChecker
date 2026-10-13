@@ -28,8 +28,17 @@ C. Generate an App Password for the email account.
 D. Paste the App Password into email_admin function at the variable labeled "password" in the try-catch statement.
 
 ## Example output
-Below is an example of the output you will receive in the log files.
+### Log output
+Below is an example of the output you will receive in the log files:
 
 ```
 Currently null
 ```
+
+### Raw output
+Here is the raw information that can be outputted when this program is ran:
+```
+null
+```
+
+## Artificial Intelligence Usage

@@ -13,6 +13,8 @@
 #                  program on your system.
 # ******************************************************************************
 #Module imports
+import json #Used for the dump-json argument.
+import argparse #Used for the different arguments added to the program.
 import psutil as ps #Used to gather base system information
 import socket as sock #Used to gather network information
 import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
@@ -35,34 +37,45 @@ moxer = ProxmoxAPI(backend='local')
 
 #MAIN FUNCTIONS
 #This pulls the information from the actual system
-def core_server_info():
+def core_server_info(verbose):
     #grabs the name of the device
+    if verbose:
+        print("[VERBOSE] Grabbing Device Name")
     device_name = sock.gethostname()
+    if verbose:
+            print("[VERBOSE] Grabbing CPU Name")
     #grabs the name of the processor
     processor_name = cpuinfo.get_cpu_info()['brand_raw']
+    if verbose:
+            print("[VERBOSE] Grabbing total memory")
     #Grabs total memory amount
     memory_unrounded = (ps.virtual_memory().total / 1073741824) #quick equation to make number from bytes to gigbytes
     memory_total = round(memory_unrounded, 2)
     #Grabs the amount of memory being used
+    if verbose:
+            print("[VERBOSE] Converting total memory to percentile")
     memory_usage = ps.virtual_memory().percent
     #Grabs the amount of CPU being used
+    if verbose:
+            print("[VERBOSE] Grabbing CPU usage")
     cpu_usage = ps.cpu_percent(interval=1)
     #Grabs total storage and amount used
+    if verbose:
+            print("[VERBOSE] Determing total disk size")
     storage = ps.disk_usage('/')
     storage_total = round((storage.total / (2**30)), 2)
+    if verbose:
+            print("[VERBOSE] Determing amount of disk used")
     storage_used = round((storage.used / (2**30)), 2)
 
-    # Grabs the active and deactive VMs
-    active = 0
-    deactive = 0
-    total = 0
+    if verbose:
+            print("[VERBOSE] Grabbing the state of each virtual machine")
+
     #For-loop that checks the status of each VM
-    for vm in moxer.nodes('pve').qemu.get():
-        if vm['status'] == 'stopped':
-            deactive += 1
-        else:
-           active += 1
-        total += 1
+    guests = [g for g in moxer.cluster.resources.get(type="vm") if not g.get("template")]
+    active = sum(1 for g in guests if g["status"] == "running")
+    total = len(guests)
+    deactive = total - active
 
     #returning all of the information
     return device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used
@@ -98,13 +111,7 @@ def backup_info():
     #The term 'get' is used because terminology between different versions of Proxmox vary.
     #run through each backup and pull is information
     for job in moxer.cluster.backup.get():
-        enabled = bool(job.get("enabled", 1)) #pulls the data of if the backup is enabled
-        schedule = job.get("schedule") or f'{job.get("dow", "?")} {job.get("starttime", "?")}' #Grabs the data for occurence of backup.
-        storage = job.get("storage") #Grabs the storage location of the backup
-
-        #Grabs the time of when the next run is going to occur
         next_run = job.get("next-run")
-        next_run = datetime.fromtimestamp(next_run).isoformat() if next_run else "n/a"
 
         #The if-else statement below grabs the scope of the virtual machines included in the backup. This is where different terminology is seen.
         if job.get("all"):
@@ -113,39 +120,57 @@ def backup_info():
             scope = f"Pool: {job['pool']}"
         else:
             scope = f"VMIDs: {job.get('vmid', 'none')}"
-        
-        retention = retention_amount(job)
 
-        backup_data = f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\nBackup ID: {job['id']}\nEnabled: {enabled}\nScheduled: {schedule}\nBackup Retention: {retention}\nNext Run: {next_run}\nStorage Location: {storage}\nSelection of VMs Included: {scope}\n/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\"
-        print(backup_data)
-        backup_list.append(backup_data) #Adds the data to the list.
-
+        backup_list.append({
+             "id": job["id"],
+             "enabled": bool(job.get("enabled", 1)), #pulls the data of if the backup is enabled
+             "schedule": job.get("schedule") or f'{job.get("dow", "?")} {job.get("starttime", "?")}', #Grabs the data for occurence of backup.
+             "retention": retention_amount(job),
+             "next_run": datetime.fromtimestamp(next_run).isoformat() if next_run else "n/a", #Grabs the time of when the next run is going to occur
+             "storage": job.get("storage"), #Grabs the storage location of the backup
+             "scope": scope
+        })
     #Returns a list of the information retreived from the backup loop
-    return backup_list
+
+    for backup in backup_list:
+         print(format_backup(backup))
+    return backup_list 
 
 #This runs through each virtual machine and grabs their data.
-def virtual_machine_info(devices):
+def virtual_machine_info(devices, verbose):
     #Holds the list of virtual machines
     virtual_machine_list = []
 
     guests = moxer.cluster.resources.get(type="vm") #Grabs the information of all VMs
     for guest in guests: #For loop that prints out the information of each VM
         #Grabs a series of information that are used through-out the outputting process.
-        vmid = guest["vmid"] #Declare ID here because of OS information
-        node = guest["node"] #Declare Node here because of OS information
-        status = guest["status"]#Declares status here because of OS information
-        vtype = guest["type"] #Only used to grab os information.
+        node, vmid, vtype = guest["node"], guest["vmid"], guest["type"]
+        if verbose:
+            print(f"[VERBOSE] Grabbing virtual machine information[{vmid}]...")
+
         try: 
             #Attempts to grab the operating System information
             cfg = moxer.nodes(node).__getattr__(vtype)(vmid).config.get()#Designed to be used for VMs, does not work with containers.
         except:
-            cfg = "I am broken."
-        operating_sys = grab_os_information(moxer, node, vmid, vtype, cfg) if status == "running" else cfg.get("ostype")
+            cfg = {}
+        mem, maxmem = guest.get("mem", 0), guest.get("maxmem", 0)
+        virtual_machine_list.append({
+             "id": vmid,
+             "name": guest.get("name"),
+             "node": node,
+             "status": guest["status"],
+             "os": os_convert(str(cfg.get("ostype"))),
+             "start_at_boot": bool(int(cfg.get("onboot", 0))),
+             "cpu_percent": round(guest.get("cpu", 0) * 100, 2),
+             "cores": cfg.get("cores"),
+             "mem_percent": memory_percentage(guest),
+             "mem_used_gb": round(mem / 1073741824, 2),
+             "mem_allotted_gb": round(maxmem / 1073741824, 2),
+             "usb": grab_usb_devices(cfg, devices),
+        })
 
-        virtual_machine_data = f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\nID: {vmid}\nVM Name: {guest.get("name")}\nNode: {node}\n\nOperating System: {os_convert(str(operating_sys))}\nStart at Boot: {cfg.get("onboot", 0)}\nStatus: {status}\nProcessor Usage: {round((guest["cpu"] * 100), 2)}\nTotal Processors: {cfg.get("cores")}\nMemory Usage Percentage: {memory_percentage(guest)}%\nMemory Usage Technical: {round((guest["mem"] / 1073741824), 2)}GB\nMemory Allotted: {round((guest["maxmem"] / 1073741824), 2)}GB\nUSB Device Detected: {grab_usb_devices(cfg, devices)}\n/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\n"
-
-        print(virtual_machine_data)
-        virtual_machine_list.append(virtual_machine_data) #Adds the virtual machine to list.
+    for vm in virtual_machine_list:
+         print(format_vm(vm))
 
     return virtual_machine_list
 
@@ -219,6 +244,25 @@ def grab_usb_devices(cfg, monitor_devices):
     else:
         return devices
 
+#----------
+#FORMATTING
+#----------
+#Formats how the backup report looks.
+def format_backup(b):
+    line = "/\\" * 20
+    return (f"{line}\nBackup ID: {b['id']}\nEnabled: {b['enabled']}\n"
+            f"Scheduled: {b['schedule']}\nBackup Retention: {b['retention']}\n"
+            f"Next Run: {b['next_run']}\nStorage Location: {b['storage']}\n"
+            f"Selection of VMs Included: {b['scope']}\n{line}")
+
+def format_vm(v):
+    line="/\\" * 20
+    return (f"{line}\nID: {v['id']}\nVM Name: {v['name']}\nNode: {v['node']}\n\nOperating System: {v['os']}"
+            f"\nStart at Boot: {v['start_at_boot']}\nStatus: {v['status']}\nProcessor Usage: {v['cpu_percent']}"
+            f"\nTotal Processors: {v['cores']}\nMemory Usage Percentage: {v['mem_percent']}%\nMemory Usage Technical: {v['mem_used_gb']}GB"
+            f"\nMemory Allotted: {v['mem_allotted_gb']}GB\nUSB Device Detected: {v['usb']}\n{line}")
+
+
 #----------------
 #HELPER FUNCTIONS
 #----------------
@@ -283,6 +327,11 @@ def email_admin(subject, sender_email, debug):
         print(f"Email failed to send: {e}")
         raise
 
+#This is a function that allows the statistics from this program to be stored in a JSON file.
+def dump_json(data, path):
+     with open(path, "w") as file:
+          json.dump(data, file, indent=2, default=str)
+
 #-------------
 #OS Dictionary
 #-------------
@@ -311,12 +360,44 @@ def os_convert(os):
 
 # Sets everything up to run
 def main():
+    debug = False #Call up here so the argument for debug can change this
+    #This here is used to work with the different possible arguments applied in the program
+    parser = argparse.ArgumentParser(
+    description="ProxMox Server Checker Tool"
+    )
+    #Used to temporarily change if you are wanting to test out the email mode locally on your machine.
+    parser.add_argument(
+    "--debug-email",
+    help="Used to temporarily change if you are wanting to test out the email mode locally on your machine."
+    )
+    parser.add_argument(
+    "--verbose",
+    action="store_true",
+    help="Displays highly detailed processing information."
+    )
+    parser.add_argument(
+    "--dump-json", nargs="?", const="proxmox_dump.json", metavar="FILE",
+    help="Writes the collected Proxmox data to a JSON file"
+    )
+    parser.add_argument(
+    "--dry-run", nargs="?", const="proxmox_dump.json", metavar="FILE",
+    help="This uses the information from a JSON file to allow the program to run the ProxMox utilities without using ProxMox."
+    )
 
-     #Making it look pretty
+    #Below connects the args to their functions or intended purposes, some arguments may be scattered below.
+    args = parser.parse_args()
+
+    if args.verbose:
+        print("[VERBOSE] Server Checker has started.")
+    
+    #Making it look pretty
     print("\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n===================================================")
 
     print("\nCORE SERVER INFORMATION\n----------------------------------------------------")
-    device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used = core_server_info()
+    verbose_core = False #for verbosing inside the core info function
+    if args.verbose:
+        verbose_core = True
+    device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used = core_server_info(verbose_core)
 
     print(f"Active VMs: {active}")
     print(f"Deactivated VMs: {deactive}")
@@ -330,6 +411,8 @@ def main():
     print(f"Overall Storage Usage: {storage_used}GB out of {storage_total}GB used")
     print(f"Left-Over Storage: {round((storage_total - storage_used), 2)}GB left")
 
+    if args.verbose:
+            print("[VERBOSE] Grabbing USB Devices")
     print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
     print("\nList of Detected USB Devices\n")
     devices = usb_monitor()
@@ -340,20 +423,46 @@ def main():
     print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
 
     print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
+    if args.verbose:
+            print("[VERBOSE] Acquring Backup Information")
     backup_list = backup_info()
 
 
     print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
+    if args.verbose:
+            print("[VERBOSE] Determining the Local IP Addresses")
     ipv4, ipv6 = network_info(device_name)
     print(f"IPV4 Address: {ipv4}")
     print(f"IPV6 Address: {ipv6}")
 
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
-
-    virtual_machine_list = virtual_machine_info(devices)
+    verbose_vm = False #for verbose information inside of the function.
+    if args.verbose:
+        verbose_vm = True
+    virtual_machine_list = virtual_machine_info(devices, verbose_vm)
+    #Create the dictionary to store ProxMox information above.
+    if args.dump_json:
+            if args.verbose:
+                print("[VERBOSE] Creating dictionary report of info dump...")
+            report = {}
+    #Store that as a log file.
+    if args.dump_json:
+        if args.verbose:
+            print("[VERBOSE] Writing raw information to JSON...")
+        dump_json(report, args.dump_json)
 
     #Sneakily run the log file here
+    if args.verbose:
+        print("[VERBOSE] Creating a log file.")
     log_data = logging_file(active, deactive, total, cpu_usage, memory_usage,storage_used, storage_total, backup_list, virtual_machine_list)
+    if args.verbose:
+        print("[VERBOSE] Log file created successfully.")
+
+    #Argument for email debug.
+    if args.debug_email:
+            if args.verbose:
+                print("[VERBOSE] Debug for email temporarily set True.")
+            debug = True #Sets emails to debug mode.
 
     sender_email = "sends out email"
     receiver_email = "receives the email"
@@ -364,9 +473,14 @@ def main():
     message["from"] = sender_email
     message["subject"] = "Server Checker"
     message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
-
-    debug = True #Set to true for testing purposes
+    if args.verbose:
+        print("[VERBOSE] Sending out the log email...")
     email_admin(message, sender_email, debug)
+    if args.verbose:
+        print("[VERBOSE] successfully sent log email.")
+
+    if args.verbose:
+        print(f"\n[VERBOSE] Server Checker has completed.")
 
 # Lets the program run
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ There are several modules that need to be installed for this program to function
 - proxmoxer - https://github.com/proxmoxer/proxmoxer
 - aiosmtpd - https://aiosmtpd.aio-libs.org/en/latest/
 The aiosmtpd module above is so you can test the email system locally. To conduct local testing, find the debug in the main function and set it to *True*.
-**NOTCE:** The local server for *aiosmtpd* also has to be setup on the machine as well, click on the link related to aiosmtpd to learn how to setup the local server.
+**NOTCE:** To setup the aiosmtpd service, type in the following command first in your terminal. It will print out all of the prospective emails into the terminal: *python -m aiosmtpd -n -c aiosmtpd.handlers.Debugging -l localhost:8025*
 
 ## Program Features
 This is a large script that essentially pulls a large amount of information from a home-lab running ProxMox that is using virtual machines. The program will pull the following information:
@@ -53,7 +53,21 @@ The program requires some code altercations for the email to be sent out to you,
 - LINE 271: In the *email_admin* function, this is where you paste the password you got from step 2.
 - LINE 356: In the *main* function, this is where you paste the sender email.
 - LINE 357: In the *main* function, this is where you paste the receiver email.
-- LINE 366: In the *main* function, this is where you can toggle on/off the debug settings for testing purposes. To turn debugging off, set *debug* to **False**.
+
+## Arguments
+This is a list of the current arguments available in the program.
+
+### debug-email
+This argument temporarily sets the email debug function to *True*. While you will still need to enable the aiosmtpd service, this prevents you from having to manually change the debug mode in the code from *False* to *True*.
+
+### dump-json
+
+
+### dry-run
+
+
+### verbose
+This argument displays additional, more detailed information while the program runs. This additional information does not get stored in the log files or in the emails but is present in the terminal output.
 
 ## Example output
 ### Log output

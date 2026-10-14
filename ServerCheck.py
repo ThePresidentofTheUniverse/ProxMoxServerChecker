@@ -3,22 +3,28 @@
 # * Programmer(s): Nolan Abbott
 # * Date.........: 2026-10-06
 # * GitHub Repo..: https://github.com/ThePresidentofTheUniverse/ServerChecker/tree/main
-# * Description..: 
-# ******************************************************************************/
+# * Description..: This is a program designed to grab the information of a ProxMox server
+#                  running virtual machines and storing it in a log file as well as sending
+#                  out an email to the individual that is running the server. This program
+#                  can either be ran manually by just running the Python script in the
+#                  server or can be set up with a SYSTEMD service.
+# * NOTICE.......: Please look through the README.md prior to running this program,
+#                  as some code will need to be altered for you to be able to run this
+#                  program on your system.
+# ******************************************************************************
 #Module imports
-import psutil as ps
-import socket as sock 
+import psutil as ps #Used to gather base system information
+import socket as sock #Used to gather network information
 import cpuinfo as cpuinfo #Used to grab the cpu information, like brand.
-import platform as plat
-import logging as log
-from datetime import datetime
+from pathlib import Path #This is used for the logging feature, allowing the program to verify if the path exists or not.
+from datetime import datetime, date #Used to convert time information.
 import re #Used to determine if there is a USB device on the VM
 from usbmonitor import USBMonitor #Used to detect usb devices
-from aiosmtpd import smtp #Used to conduct local testing
-from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR, ID_VENDOR_ID #Pulls metadata information from the USB.
+from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR, ID_VENDOR_ID  #Pulls metadata information from the USB.
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
 from proxmoxer.core import ResourceException #In case information is not able to found for on reason or another.
 #Modules for sending out an email.
+from aiosmtpd import smtp #Used to conduct local testing
 import smtplib
 import ssl
 from getpass import getpass
@@ -85,29 +91,11 @@ def network_info(hostname):
 
     return ipv4, ipv6
 
-#This is code that can probably work to get the IPV6 address, but it uses the name of the interface, which I would like to grab dynamically instead.
-#def network_info():
-    #interface = "vmbr0"
-    #ipv4 = None
-    #ipv6 = []
-
-    #addresses = psutil.net_if_addrs().get(interface, [])
-
-    #for addr in addresses:
-    #    if addr.family == socket.AF_INET:
-    #        ipv4 = addr.address
-     #   elif addr.family == socket.AF_INET6:
-            # Remove the scope suffix if present
-      #      address = addr.address.split("%")[0]
-       #     if address not in ipv6:
-        #        ipv6.append(address)
-
-    #return ipv4, ipv6
-
 #This grabs the information regarding the state of the systems current backup
 def backup_info():
+    #Initilize list to store backup information for log files.
+    backup_list = []
     #The term 'get' is used because terminology between different versions of Proxmox vary.
-
     #run through each backup and pull is information
     for job in moxer.cluster.backup.get():
         enabled = bool(job.get("enabled", 1)) #pulls the data of if the backup is enabled
@@ -128,18 +116,18 @@ def backup_info():
         
         retention = retention_amount(job)
 
-        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
-        print(f"Backup ID: {job['id']}")
-        print(f"Enabled: {enabled}")
-        print(f"Scheduled: {schedule}")
-        print(f"Backup Retention: {retention}")
-        print(f"Next Run: {next_run}")
-        print(f"Storage Location: {storage}")
-        print(f"Selection of VMs Included: {scope}")
-        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+        backup_data = f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\nBackup ID: {job['id']}\nEnabled: {enabled}\nScheduled: {schedule}\nBackup Retention: {retention}\nNext Run: {next_run}\nStorage Location: {storage}\nSelection of VMs Included: {scope}\n/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\"
+        print(backup_data)
+        backup_list.append(backup_data) #Adds the data to the list.
+
+    #Returns a list of the information retreived from the backup loop
+    return backup_list
 
 #This runs through each virtual machine and grabs their data.
 def virtual_machine_info(devices):
+    #Holds the list of virtual machines
+    virtual_machine_list = []
+
     guests = moxer.cluster.resources.get(type="vm") #Grabs the information of all VMs
     for guest in guests: #For loop that prints out the information of each VM
         #Grabs a series of information that are used through-out the outputting process.
@@ -147,30 +135,47 @@ def virtual_machine_info(devices):
         node = guest["node"] #Declare Node here because of OS information
         status = guest["status"]#Declares status here because of OS information
         vtype = guest["type"] #Only used to grab os information.
-
-        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
-        print(f"ID: {vmid}")
-        print(f"VM Name: {guest.get("name")}")
-        print(f"Node: {node}\n")
         try: 
             #Attempts to grab the operating System information
             cfg = moxer.nodes(node).__getattr__(vtype)(vmid).config.get()#Designed to be used for VMs, does not work with containers.
         except:
             cfg = "I am broken."
-        print(f"Operating System: {grab_os_information(moxer, node, vmid, vtype, cfg) if status == "running" else cfg.get("ostype")}")
-        print(f"Start at Boot: {cfg.get("onboot", 0)}")
-        print(f"Status: {status}")
-        print(f"Processor Usage: {round((guest["cpu"] * 100), 2)}") #Math equation to get CPU usage
-        print(f"Total Processors: {cfg.get("cores")}")
-        print(f"Memory Usage Percentage: {memory_percentage(guest)}%") #Weird equation to get memory in percentage.
-        print(f"Memory Usage Technical: {round((guest["mem"] / 1073741824), 2)}GB") #bytes to gb conversion
-        print(f"Memory Allotted: {round((guest["maxmem"] / 1073741824), 2)}GB") #bytes to gb conversion
-        print(f"USB Device Detected: {grab_usb_devices(cfg, devices)}")
-        print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
-        print(f"\n")
+        operating_sys = grab_os_information(moxer, node, vmid, vtype, cfg) if status == "running" else cfg.get("ostype")
+
+        virtual_machine_data = f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\nID: {vmid}\nVM Name: {guest.get("name")}\nNode: {node}\n\nOperating System: {os_convert(str(operating_sys))}\nStart at Boot: {cfg.get("onboot", 0)}\nStatus: {status}\nProcessor Usage: {round((guest["cpu"] * 100), 2)}\nTotal Processors: {cfg.get("cores")}\nMemory Usage Percentage: {memory_percentage(guest)}%\nMemory Usage Technical: {round((guest["mem"] / 1073741824), 2)}GB\nMemory Allotted: {round((guest["maxmem"] / 1073741824), 2)}GB\nUSB Device Detected: {grab_usb_devices(cfg, devices)}\n/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\\n"
+
+        print(virtual_machine_data)
+        virtual_machine_list.append(virtual_machine_data) #Adds the virtual machine to list.
+
+    return virtual_machine_list
 
 #This grabs some of the data from above and compiles it into a log file
-#def logging_file():
+def logging_file(active, deactive, total, cpu_use, memory_use, storage_used, storage_total, backup_list, virtual_machine_list):
+    log_file = Path("/root/server_checker_log_file.txt")
+
+    #The central log file
+    log_data = f"\nLog for Server Checker\n----------------------------------------------------\nLOG DATE: {date.today()}\n----------------------------------------------------\nCORE SERVER INFO\nActive Virtual Machines: {active}\nDeactive Virtual Machines: {deactive}\n Total Virtual Machines: {total}\n\nOverall CPU Usage: {cpu_use}\nOverall Memory Usage: {memory_use}%\nStorage Usage {storage_used}GB out of {storage_total}GB\n---------------------------------------------------\nSERVER BACKUP INFORMATION\n----------------------------------------------------\n"
+
+    #appends the backup information to the log_data string
+    for backup in backup_list:
+        log_data += backup
+    #Appends to log_data
+    log_data += f"\n----------------------------------------------------\nVIRTUAL MACHINES INFORMATION\n----------------------------------------------------"
+    #Appends list of virtual machines to log data
+    for virtual_machine in virtual_machine_list:
+        log_data += f"\n" + virtual_machine
+    #Appends to log_data
+    log_data += f"----------------------------------------------------\n\n()()()()()()()()()()()()()()()()()()()()()()()()()()\nEND OF LOG\n()()()()()()()()()()()()()()()()()()()()()()()()()()\n\n"
+
+    if log_file.is_file(): #If the file exists
+        with open(log_file, "a") as logging:
+                    logging.write(log_data)
+
+    else: #If the file does not exist
+        with open("/root/server_checker_log_file.txt", "w+") as new_file:
+            new_file.write(f"\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n==================================================={log_data}")
+
+    return log_data
 
 #-------------------------
 # USB Monitoring Functions
@@ -217,7 +222,6 @@ def grab_usb_devices(cfg, monitor_devices):
 #----------------
 #HELPER FUNCTIONS
 #----------------
-
 #This is a function for reading wthe retention for backups
 def retention_amount(job):
     #Depending on which version of Proxmox you are using, the retention is either stored as prune or as max. Max is the older version.
@@ -279,15 +283,40 @@ def email_admin(subject, sender_email, debug):
         print(f"Email failed to send: {e}")
         raise
 
+#-------------
+#OS Dictionary
+#-------------
+# This is essentially a dictionary used to convert the terms that are printed out by default with the OS stuff and makes them look pretty.
+OS_DICT = {
+    "l26": "Linux (2.6+ kernel)",
+    "l24": "Linux (2.4 kernel)",
+    "win11": "Windows 11 / Server 2022 / 2025",
+    "win10": "Windows 10 / Server 2016 / 2019",
+    "win8": "Windows 8 / Server 2012 / 2012 R2",
+    "win7": "Windows 7 / Server 2008 R2",
+    "wvista": "Windows Vista",
+    "w2k8": "Windows Server 2008",
+    "w2k3": "Windows Server 2003",
+    "wxp": "Windows XP",
+    "w2k": "Windows 2000",
+    "solaris": "Solaris",
+    "other": "Other",
+}
+#Function that converts the os name to a pretty name with the help of the dictionary above
+def os_convert(os):
+    raw = os
+    if raw is None: # If there is no info
+        return "Unknown Operating System"
+    return OS_DICT.get(raw, raw) # Returns if there is info.
+
 # Sets everything up to run
 def main():
 
-    #Making it look pretty
+     #Making it look pretty
     print("\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n===================================================")
 
     print("\nCORE SERVER INFORMATION\n----------------------------------------------------")
     device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used = core_server_info()
-    print(f"DataCenter: ")
 
     print(f"Active VMs: {active}")
     print(f"Deactivated VMs: {deactive}")
@@ -311,7 +340,8 @@ def main():
     print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
 
     print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
-    backup_info()
+    backup_list = backup_info()
+
 
     print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
     ipv4, ipv6 = network_info(device_name)
@@ -320,7 +350,10 @@ def main():
 
     print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
 
-    virtual_machine_info(devices)
+    virtual_machine_list = virtual_machine_info(devices)
+
+    #Sneakily run the log file here
+    log_data = logging_file(active, deactive, total, cpu_usage, memory_usage,storage_used, storage_total, backup_list, virtual_machine_list)
 
     sender_email = "sends out email"
     receiver_email = "receives the email"
@@ -329,11 +362,11 @@ def main():
     message = EmailMessage()
     message["to"] = receiver_email
     message["from"] = sender_email
-    message["subject"] = "test message"
-    message.set_content("This is a test message")
+    message["subject"] = "Server Checker"
+    message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
 
-    debug = False
-    #email_admin(message, sender_email, debug)
+    debug = True #Set to true for testing purposes
+    email_admin(message, sender_email, debug)
 
 # Lets the program run
 if __name__ == "__main__":

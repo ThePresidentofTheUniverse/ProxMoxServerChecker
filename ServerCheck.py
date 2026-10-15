@@ -587,23 +587,29 @@ def main():
 
     sender_email = "sends out email"
     receiver_email = "receives the email"
+    valid_email = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}" #This is used to at least validate the email to make sure it is correctly written.
+
+
     if args.prevent_email:
         if args.verbose:
               print("[VERBOSE] Email will not be sent to receiver.")
         no_email = True
 
     if no_email == False:
-        #All this stuff here is to send out an email
-        message = EmailMessage()
-        message["to"] = receiver_email
-        message["from"] = sender_email
-        message["subject"] = "Server Checker"
-        message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
-        if args.verbose:
-            print("[VERBOSE] Sending out the log email...")
-        email_admin(message, sender_email, debug)
-        if args.verbose:
-            print("[VERBOSE] successfully sent log email.")
+        if re.fullmatch(valid_email, sender_email) and re.fullmatch(valid_email, receiver_email): #Validates email is correctly formatted at least.
+            #All this stuff here is to send out an email
+            message = EmailMessage()
+            message["to"] = receiver_email
+            message["from"] = sender_email
+            message["subject"] = "Server Checker"
+            message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
+            if args.verbose:
+                print("[VERBOSE] Sending out the log email...")
+            email_admin(message, sender_email, debug)
+            if args.verbose:
+                print("[VERBOSE] successfully sent log email.")
+        else:
+            print("Either the receiver_email or the sender_email failed the validation check. Please review the emails you have entered.")
 
     if args.verbose:
         print(f"\n[VERBOSE] Server Checker has completed.")

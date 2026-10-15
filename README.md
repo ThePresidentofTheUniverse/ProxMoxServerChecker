@@ -120,7 +120,7 @@ VIRTUAL MACHINES INFORMATION
 /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 ID: 100
 VM Name: MyCoolWebsite
-Node: pve
+Node: someNode
 
 Operating System: Linux (2.6+ kernel)
 Start at Boot: 1
@@ -154,7 +154,7 @@ CORE SERVER INFORMATION
 Active VMs: 6
 Deactivated VMs: 2
 Total VMs: 8
-Device Name: pve
+Device Name: someNode
 Processor: AMD Ryzen 5 3600 6-Core Processor
 Overall CPU Usage: 0.9
 Memory: 31.29GB
@@ -191,7 +191,7 @@ VIRTUAL MACHINES TECHNICAL INFORMATION
 /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 ID: 100
 VM Name: MyCoolWebsite
-Node: pve
+Node: someNode
 
 Operating System: Linux (2.6+ kernel)
 Start at Boot: 1

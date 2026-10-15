@@ -26,18 +26,17 @@ from usbmonitor.attributes import ID_MODEL, ID_MODEL_ID, ID_VENDOR, ID_VENDOR_ID
 from proxmoxer import ProxmoxAPI #This can be used to do more monitoring.
 from proxmoxer.core import ResourceException #In case information is not able to found for on reason or another.
 #Modules for sending out an email.
-from aiosmtpd import smtp #Used to conduct local testing
 import smtplib
 import ssl
 from getpass import getpass
 from email.message import EmailMessage
 
-#Create global var that allows this program to access the backend of ProxMox server locally.
-moxer = ProxmoxAPI(backend='local')
-
 #MAIN FUNCTIONS
 #This pulls the information from the actual system
 def core_server_info(verbose):
+    #Create a null dict for info return
+    server_info = []
+
     #grabs the name of the device
     if verbose:
         print("[VERBOSE] Grabbing Device Name")
@@ -68,17 +67,50 @@ def core_server_info(verbose):
             print("[VERBOSE] Determing amount of disk used")
     storage_used = round((storage.used / (2**30)), 2)
 
-    if verbose:
-            print("[VERBOSE] Grabbing the state of each virtual machine")
+    #Throw all data together into the dictionary
+    server_info.append({
+         "device": device_name,
+         "processor": processor_name,
+         "mem_total": memory_total,
+         "mem_usage": memory_usage,
+         "cpu_usage": cpu_usage,
+         "storage_tote": storage_total,
+         "storage_used": storage_used,
+    })
 
+    #Returns a pretty design of the information
+    pretty_list = ""
+    for info in server_info:
+        pretty_list += format_core(info)
+
+    #returning all of the information
+    return server_info, pretty_list
+
+def state_of_vms(verbose, moxer):
+    if verbose:
+        print("[VERBOSE] Grabbing the state of each virtual machine")
+     
+    #Stores each state of the VM for JSON files
+    vm_states = []
+     
     #For-loop that checks the status of each VM
     guests = [g for g in moxer.cluster.resources.get(type="vm") if not g.get("template")]
     active = sum(1 for g in guests if g["status"] == "running")
     total = len(guests)
     deactive = total - active
+     
+    vm_states.append({
+        "active_vms": active,
+        "deactive_vms": deactive,
+        "total_vms": total
+        })
+    #Returns a pretty design of the information
+    pretty_list = ""
+    for state in vm_states:
+         pretty_list += format_vm_states(state)
 
-    #returning all of the information
-    return device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used
+    #Returning the state information
+    return vm_states, pretty_list
     
 #This pulls the network information of the main system
 def network_info(hostname):
@@ -88,24 +120,18 @@ def network_info(hostname):
     except sock.gaierror as e:
         ipv4 = f"lookup failed - {e}"
 
-    #Attempting to pull the IPV6 address
+    #Attempting to pull the IPV6 address (decent chance that this usually does not work due to how the hostname is setup. Have not found a way to get around this yet.)
     try:
-        results = sock.getaddrinfo(
-            hostname,
-            None,
-            family=sock.AF_INET6,
-            type=sock.SOCK_STREAM
-        )
-        ipv6 = list({
-            result[4][0] for result in results
-        })
+        results = sock.getaddrinfo(hostname, None, sock.AF_INET6)
+        addrs = [r[4][0].split("%")[0] for r in results]
+        ipv6 = [a for a in addrs if not a.startswith("fe80") and a != "::1"]
     except sock.gaierror as e:
         ipv6 = f"lookup failed - {e}"
 
-    return ipv4, ipv6
+    return ipv4, ipv6 if ipv6 else (addrs[0] if addrs else f"lookup failed - {e}")
 
 #This grabs the information regarding the state of the systems current backup
-def backup_info():
+def backup_info(moxer):
     #Initilize list to store backup information for log files.
     backup_list = []
     #The term 'get' is used because terminology between different versions of Proxmox vary.
@@ -131,13 +157,13 @@ def backup_info():
              "scope": scope
         })
     #Returns a list of the information retreived from the backup loop
-
+    pretty_list = ""
     for backup in backup_list:
-         print(format_backup(backup))
-    return backup_list 
+         pretty_list += format_backup(backup)
+    return backup_list , pretty_list
 
 #This runs through each virtual machine and grabs their data.
-def virtual_machine_info(devices, verbose):
+def virtual_machine_info(devices, verbose, moxer):
     #Holds the list of virtual machines
     virtual_machine_list = []
 
@@ -147,7 +173,8 @@ def virtual_machine_info(devices, verbose):
         node, vmid, vtype = guest["node"], guest["vmid"], guest["type"]
         if verbose:
             print(f"[VERBOSE] Grabbing virtual machine information[{vmid}]...")
-
+        
+        
         try: 
             #Attempts to grab the operating System information
             cfg = moxer.nodes(node).__getattr__(vtype)(vmid).config.get()#Designed to be used for VMs, does not work with containers.
@@ -169,38 +196,66 @@ def virtual_machine_info(devices, verbose):
              "usb": grab_usb_devices(cfg, devices),
         })
 
+        pretty_list = ""
     for vm in virtual_machine_list:
-         print(format_vm(vm))
-
-    return virtual_machine_list
+         pretty_list += format_vm(vm)
+    return virtual_machine_list, pretty_list
 
 #This grabs some of the data from above and compiles it into a log file
-def logging_file(active, deactive, total, cpu_use, memory_use, storage_used, storage_total, backup_list, virtual_machine_list):
-    log_file = Path("/root/server_checker_log_file.txt")
+def logging_file(pretty_core, pretty_states, backup_pretty, vm_pretty, prevent_log):
+    log_file = Path(__file__).resolve().parent / "server_checker_log_file.txt"
 
     #The central log file
-    log_data = f"\nLog for Server Checker\n----------------------------------------------------\nLOG DATE: {date.today()}\n----------------------------------------------------\nCORE SERVER INFO\nActive Virtual Machines: {active}\nDeactive Virtual Machines: {deactive}\n Total Virtual Machines: {total}\n\nOverall CPU Usage: {cpu_use}\nOverall Memory Usage: {memory_use}%\nStorage Usage {storage_used}GB out of {storage_total}GB\n---------------------------------------------------\nSERVER BACKUP INFORMATION\n----------------------------------------------------\n"
-
-    #appends the backup information to the log_data string
-    for backup in backup_list:
-        log_data += backup
+    log_data = f"\nLog for Server Checker\n----------------------------------------------------\nLOG DATE: {date.today()}\n----------------------------------------------------\nCORE SERVER INFO\n{pretty_states}\n{pretty_core}\n---------------------------------------------------\nSERVER BACKUP INFORMATION\n---------------------------------------------------\n"
+    log_data += backup_pretty
     #Appends to log_data
     log_data += f"\n----------------------------------------------------\nVIRTUAL MACHINES INFORMATION\n----------------------------------------------------"
     #Appends list of virtual machines to log data
-    for virtual_machine in virtual_machine_list:
-        log_data += f"\n" + virtual_machine
+    log_data += vm_pretty
     #Appends to log_data
     log_data += f"----------------------------------------------------\n\n()()()()()()()()()()()()()()()()()()()()()()()()()()\nEND OF LOG\n()()()()()()()()()()()()()()()()()()()()()()()()()()\n\n"
 
-    if log_file.is_file(): #If the file exists
-        with open(log_file, "a") as logging:
-                    logging.write(log_data)
+    #Does it here specifically because the user might still want to get an email.
+    if prevent_log == False:
+        if log_file.is_file(): #If the file exists
+            with open(log_file, "a") as logging:
+                        logging.write(log_data)
 
-    else: #If the file does not exist
-        with open("/root/server_checker_log_file.txt", "w+") as new_file:
-            new_file.write(f"\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n==================================================={log_data}")
+        else: #If the file does not exist
+            with open(log_file, "w+") as new_file:
+                new_file.write(f"\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n==================================================={log_data}")
 
     return log_data
+
+#This function collects the data from the system live
+def data_collector(moxer, verbose):
+    #Grab core server information
+
+    server_info, pretty_core = core_server_info(verbose)
+    #Grabs USB devices
+    devices = usb_monitor()
+    #Grabs the VM state information
+    vm_states, pretty_states = state_of_vms(verbose, moxer)
+    #Grabs the backup information
+    backup_list, backup_pretty = backup_info(moxer)
+    #Grabs network information
+    ipv4, ipv6 = network_info(server_info[0]["device"])
+    #Grabs list of VMs
+    virtual_machine_list, vm_pretty = virtual_machine_info(devices, verbose, moxer)
+    #returning all of the information that got pulled from above
+    return{
+      "server_info": server_info,
+      "pretty_core": pretty_core,
+      "devices": devices,
+      "vm_states": vm_states,
+      "pretty_states": pretty_states,
+      "backup_list": backup_list,
+      "backup_pretty": backup_pretty,
+      "ipv4": ipv4,
+      "ipv6": ipv6,
+      "virtual_machine_list": virtual_machine_list,
+      "vm_pretty": vm_pretty
+    }
 
 #-------------------------
 # USB Monitoring Functions
@@ -250,18 +305,58 @@ def grab_usb_devices(cfg, monitor_devices):
 #Formats how the backup report looks.
 def format_backup(b):
     line = "/\\" * 20
-    return (f"{line}\nBackup ID: {b['id']}\nEnabled: {b['enabled']}\n"
+    return (f"\n{line}\nBackup ID: {b['id']}\nEnabled: {b['enabled']}\n"
             f"Scheduled: {b['schedule']}\nBackup Retention: {b['retention']}\n"
             f"Next Run: {b['next_run']}\nStorage Location: {b['storage']}\n"
-            f"Selection of VMs Included: {b['scope']}\n{line}")
-
+            f"Selection of VMs Included: {b['scope']}\n{line}\n")
+#Format how each virtual machine looks
 def format_vm(v):
     line="/\\" * 20
-    return (f"{line}\nID: {v['id']}\nVM Name: {v['name']}\nNode: {v['node']}\n\nOperating System: {v['os']}"
+    return (f"\n{line}\nID: {v['id']}\nVM Name: {v['name']}\nNode: {v['node']}\n\nOperating System: {v['os']}"
             f"\nStart at Boot: {v['start_at_boot']}\nStatus: {v['status']}\nProcessor Usage: {v['cpu_percent']}"
             f"\nTotal Processors: {v['cores']}\nMemory Usage Percentage: {v['mem_percent']}%\nMemory Usage Technical: {v['mem_used_gb']}GB"
-            f"\nMemory Allotted: {v['mem_allotted_gb']}GB\nUSB Device Detected: {v['usb']}\n{line}")
+            f"\nMemory Allotted: {v['mem_allotted_gb']}GB\nUSB Device Detected: {v['usb']}\n{line}\n")
+#format how core server info looks
+def format_core(c):
+    return(f"\nDevice Name: {c['device']}\nProcessor: {c['processor']}\nOverall CPU Usage: {c['cpu_usage']}%\nMemory: {c['mem_total']}GB\nOverall Memory Usage: {c['mem_usage']}"
+           f"\nOverall Storage Usage {c['storage_used']}GB out of {c['storage_tote']}\nLeft-Over Storage: {round((c['storage_tote'] - c['storage_used']), 2)}GB")
+#Format how the vm states look
+def format_vm_states(vm):
+    return(f"\nActive VMs: {vm['active_vms']}\nDeactive VMs: {vm['deactive_vms']}\nTotal VMs: {vm['total_vms']}\n")
 
+#Returns a pretty_looking report that is used for the standard output
+def report_builder(report, verbose):
+     #Making it look pretty
+    print("\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n====================================================")
+    #Core server information
+    print("\nCORE SERVER INFORMATION\n----------------------------------------------------")
+    #Print out the report information
+    print(report["pretty_core"])
+    #Prints out the VM States
+    print(report["pretty_states"])
+    #USB Information
+    if verbose:
+        print("[VERBOSE] Grabbing USB Devices")
+    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+    print("\nList of Detected USB Devices\n")
+    # Print the USB devices
+    for device_id, device_info in report["devices"].items():
+        print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
+    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
+    #Prints out the Backup Information
+    print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
+    if verbose:
+        print("[VERBOSE] Acquring Backup Information")
+    print(report["backup_pretty"])
+    #Prints out network information
+    print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
+    if verbose:
+            print("[VERBOSE] Determining the Local IP Addresses")
+    print(f"IPV4 Address: {report['ipv4']}")
+    print(f"IPV6 Address: {report['ipv6']}")
+    #Print out the VM information
+    print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
+    print(report["vm_pretty"])
 
 #----------------
 #HELPER FUNCTIONS
@@ -299,9 +394,6 @@ def memory_percentage(guest):
         return 0.0
     return round(guest.get("mem", 0) / max * 100, 2)
 
-#This is a function used to check if a VM goes down or up
-#def vm_activity():
-
 #This is a function that sends out emails.
 def email_admin(subject, sender_email, debug):
     #Designed to test locally.
@@ -327,10 +419,31 @@ def email_admin(subject, sender_email, debug):
         print(f"Email failed to send: {e}")
         raise
 
+#---------------
+#JSON FILE STUFF
+#---------------
+
 #This is a function that allows the statistics from this program to be stored in a JSON file.
-def dump_json(data, path):
-     with open(path, "w") as file:
-          json.dump(data, file, indent=2, default=str)
+def dump_json(report, path):
+    with open(path, "w") as file:
+          json.dump(report, file, indent=2, default=str)
+    print(f"Proxmox data written to {path}")
+#Keys from the JSON file
+REQUIRED_KEYS = {"server_info", "devices", "vm_states", "backup_list", "ipv4", "ipv6", "virtual_machine_list"}
+#Function used to load the JSON file.
+def load_json(path):
+    try:
+          with open(path) as file:
+               report = json.load(file)
+    except FileNotFoundError:
+         raise SystemExit(f"The following path was not found: {path}. Please verify that you have typed in the path correctly.")
+    except json.JSONDecodeError as e:
+         raise SystemExit(f"The following file that you have provieded is not valid: {path}. Invalid JSON: {e}")
+
+    missing = REQUIRED_KEYS - report.keys()
+    if missing:
+         raise SystemExit(f"The Dry-Run file created is missing the following sections: {', '.join(sorted(missing))}")
+    return report
 
 #-------------
 #OS Dictionary
@@ -361,6 +474,9 @@ def os_convert(os):
 # Sets everything up to run
 def main():
     debug = False #Call up here so the argument for debug can change this
+    no_email = False #Call up here so the argument for email prevention can change this.
+    log_prevention = False #Call up here so the argument for log file prevention can change this.
+    silence = False #Call up here so the argument for the silent output can be enabled.
     #This here is used to work with the different possible arguments applied in the program
     parser = argparse.ArgumentParser(
     description="ProxMox Server Checker Tool"
@@ -376,6 +492,21 @@ def main():
     help="Displays highly detailed processing information."
     )
     parser.add_argument(
+    "--prevent-email",
+    action="store_true",
+    help="Prevents the email functionality from sending out the log file to the receiver's email address."
+    )
+    parser.add_argument(
+    "--prevent-log",
+    action="store_true",
+    help="Prevents the log file from storing its data."
+    )
+    parser.add_argument(
+    "--silent-run",
+    action="store_true",
+    help="Standard output is not shown in the terminal"
+    )
+    parser.add_argument(
     "--dump-json", nargs="?", const="proxmox_dump.json", metavar="FILE",
     help="Writes the collected Proxmox data to a JSON file"
     )
@@ -386,77 +517,67 @@ def main():
 
     #Below connects the args to their functions or intended purposes, some arguments may be scattered below.
     args = parser.parse_args()
-
     if args.verbose:
         print("[VERBOSE] Server Checker has started.")
-    
-    #Making it look pretty
-    print("\n====================================================\nPOTU's SERVER CHECKER UTILITY\nUSE ONLY ON PROXMOX SERVICES\n===================================================")
+    #Prevent dry-run and json-dump from working together, which would result in errors
+    if args.dry_run and args.dump_json:
+            parser.error("--dry-run & --dump-json cannot be used together.")
 
-    print("\nCORE SERVER INFORMATION\n----------------------------------------------------")
-    verbose_core = False #for verbosing inside the core info function
-    if args.verbose:
-        verbose_core = True
-    device_name, processor_name, memory_total, memory_usage, cpu_usage, active, deactive, total, storage_total, storage_used = core_server_info(verbose_core)
+    if args.dry_run:
+        report = load_json(args.dry_run)
+        print(f"[DRY RUN] Using data from {args.dry_run}")
+        print(f"(collected {report.get('generated', 'unknown time')})")
+    else:
+        #Create global var that allows this program to access the backend of ProxMox server locally.
+        moxer = ProxmoxAPI(backend='local')
+        report = data_collector(moxer, args.verbose)
 
-    print(f"Active VMs: {active}")
-    print(f"Deactivated VMs: {deactive}")
-    print(f"Total VMs: {total}")
+    if args.silent_run:
+        if args.verbose:
+            print("[VERBOSE] Running program without showing output.")
+        silence = True
 
-    print(f"Device Name: {device_name}")
-    print(f"Processor: {processor_name}")
-    print(f"Overall CPU Usage: {cpu_usage}")
-    print(f"Memory: {memory_total}GB")
-    print(f"Overall Memory Usage: {memory_usage}%")
-    print(f"Overall Storage Usage: {storage_used}GB out of {storage_total}GB used")
-    print(f"Left-Over Storage: {round((storage_total - storage_used), 2)}GB left")
+    if silence == False:
+        report_builder(report, args.verbose)
 
-    if args.verbose:
-            print("[VERBOSE] Grabbing USB Devices")
-    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
-    print("\nList of Detected USB Devices\n")
-    devices = usb_monitor()
-    # Print the USB devices
-    for device_id, device_info in devices.items():
-        print(f"{device_id} -- {device_info[ID_MODEL]} ({device_info[ID_MODEL_ID]} - {device_info[ID_VENDOR_ID]})")
-
-    print(f"/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\")
-
-    print("\nBACKUP INFORMATION\n----------------------------------------------------\n")
-    if args.verbose:
-            print("[VERBOSE] Acquring Backup Information")
-    backup_list = backup_info()
-
-
-    print("\nNETWORK SYSTEM INFORMATION\n----------------------------------------------------")
-    if args.verbose:
-            print("[VERBOSE] Determining the Local IP Addresses")
-    ipv4, ipv6 = network_info(device_name)
-    print(f"IPV4 Address: {ipv4}")
-    print(f"IPV6 Address: {ipv6}")
-
-    print("\nVIRTUAL MACHINES TECHNICAL INFORMATION\n----------------------------------------------------")
-    verbose_vm = False #for verbose information inside of the function.
-    if args.verbose:
-        verbose_vm = True
-    virtual_machine_list = virtual_machine_info(devices, verbose_vm)
     #Create the dictionary to store ProxMox information above.
     if args.dump_json:
             if args.verbose:
                 print("[VERBOSE] Creating dictionary report of info dump...")
-            report = {}
+            #Create the report
+            dump_report = {
+                 "generated": datetime.now().isoformat(timespec="seconds"),
+                 "server_info": report["server_info"],
+                 "devices": report["devices"],
+                 "vm_states": report["vm_states"],
+                 "backup_list": report["backup_list"],
+                 "ipv4": report["ipv4"],
+                 "ipv6": report["ipv6"],
+                 "virtual_machine_list": report["virtual_machine_list"],
+            }
+            #Call function to dump information to json
+            dump_json(dump_report, args.dump_json)
+
     #Store that as a log file.
     if args.dump_json:
         if args.verbose:
             print("[VERBOSE] Writing raw information to JSON...")
         dump_json(report, args.dump_json)
 
+    
+    if args.prevent_log:
+        if args.verbose:
+            print("[VERBOSE] This run will not be written to the log file.")
+        log_prevention = True
+
     #Sneakily run the log file here
-    if args.verbose:
-        print("[VERBOSE] Creating a log file.")
-    log_data = logging_file(active, deactive, total, cpu_usage, memory_usage,storage_used, storage_total, backup_list, virtual_machine_list)
-    if args.verbose:
-        print("[VERBOSE] Log file created successfully.")
+    if log_prevention == False:
+        if args.verbose:
+            print("[VERBOSE] Creating a log file.")
+    log_data = logging_file(report["pretty_core"], report["pretty_states"], report["backup_pretty"], report["vm_pretty"], log_prevention)
+    if log_prevention == False:
+        if args.verbose:
+            print("[VERBOSE] Log file created successfully.")
 
     #Argument for email debug.
     if args.debug_email:
@@ -466,18 +587,23 @@ def main():
 
     sender_email = "sends out email"
     receiver_email = "receives the email"
+    if args.prevent_email:
+        if args.verbose:
+              print("[VERBOSE] Email will not be sent to receiver.")
+        no_email = True
 
-    #All this stuff here is to send out an email
-    message = EmailMessage()
-    message["to"] = receiver_email
-    message["from"] = sender_email
-    message["subject"] = "Server Checker"
-    message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
-    if args.verbose:
-        print("[VERBOSE] Sending out the log email...")
-    email_admin(message, sender_email, debug)
-    if args.verbose:
-        print("[VERBOSE] successfully sent log email.")
+    if no_email == False:
+        #All this stuff here is to send out an email
+        message = EmailMessage()
+        message["to"] = receiver_email
+        message["from"] = sender_email
+        message["subject"] = "Server Checker"
+        message.set_content(f"The server checker has been ran! Here is the information gathered from the log file:\n{log_data}")
+        if args.verbose:
+            print("[VERBOSE] Sending out the log email...")
+        email_admin(message, sender_email, debug)
+        if args.verbose:
+            print("[VERBOSE] successfully sent log email.")
 
     if args.verbose:
         print(f"\n[VERBOSE] Server Checker has completed.")

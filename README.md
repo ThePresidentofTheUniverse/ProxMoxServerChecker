@@ -50,9 +50,9 @@ In my case, I ended up using Gmail to allow my emails to be sent out. To do this
 
 3. Configuring the Email Information in the Code
 The program requires some code altercations for the email to be sent out to you, here are the lines of code that you need to change:
-- LINE 271: In the *email_admin* function, this is where you paste the password you got from step 2.
-- LINE 356: In the *main* function, this is where you paste the sender email.
-- LINE 357: In the *main* function, this is where you paste the receiver email.
+- In the *email_admin* function, this is where you paste the password you got from step 2.
+- In the *main* function, this is where you paste the sender email.
+- In the *main* function, this is where you paste the receiver email.
 
 ## Arguments
 This is a list of the current arguments available in the program.
@@ -61,10 +61,25 @@ This is a list of the current arguments available in the program.
 This argument temporarily sets the email debug function to *True*. While you will still need to enable the aiosmtpd service, this prevents you from having to manually change the debug mode in the code from *False* to *True*.
 
 ### dump-json
+This argument creates a dump file of all relevant ProxMox information that this program uses, allowing you to dry-run this program or use the data gathered from the JSON file into whatever you want to use it for.
 
+**NOTICE:** This argument is not able to run with the *dry-run* argument. Doing this will cause the program to stop itself from continuing.
 
 ### dry-run
+This is an argument that allows you to dry-run the JSON dump file that was created with the *dump-json* arguement. This is designed primarily for testing purposes, allowing you to see how the program runs and what its capabilities are. Please note that a dry-run will still attempt to send out an email and will send info to the log file.
 
+**NOTICE:** This argument is not able to run with the *dump-json* argument. Doing this will cause the program to stop itself from continuing.
+
+### prevent-log
+This argument will stop the script from creating and/or updating the log file.
+
+**NOTICE:** This will not prevent the log data from getting sent in the email still.
+
+### prevent-email
+This stops the email with log data from getting sent to the receiver.
+
+### silent-run
+The standard output is not shown in the terminal; verbose will still be shown if ran with this command.
 
 ### verbose
 This argument displays additional, more detailed information while the program runs. This additional information does not get stored in the log files or in the emails but is present in the terminal output.
@@ -198,7 +213,12 @@ USB Device Detected: No Devices Detected
 3. Select the *Use USB Vendor/Device ID*
 4. Select the relevant USB device you want to connect and select the *Add* option.
 
+## Known Bugs, Issues and Problems
+This is a list containing information of known bugs and problems with this program.
+* IPV6 Address Frequently not pulling.
+* Verbose mode does not output alongside program running.
+
 ## Artificial Intelligence Usage
 *Please note that artificial intelligence was used during the process of creating this code. Down below is how it was used for this project.*
 
-To help me better understand how the proxmoxer module functions, I ended up having artificial intelligence coach/teach me how the information was being pulled and called upon with the module as well as having it list off the information that can be called and how it could be called. I also had it generated the list of operating systems for the *OS_DICT* dictionary on LINE 290-303.
+To help me better understand how the proxmoxer module functions, I ended up having artificial intelligence coach/teach me how the information was being pulled and called upon with the module as well as having it list off the information that can be called and how it could be called. I also had it generated the list of operating systems for the *OS_DICT* dictionary.

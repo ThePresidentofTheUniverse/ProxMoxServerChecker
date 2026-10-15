@@ -1,0 +1,275 @@
+{
+  "server_info": [
+    {
+      "device": "hostname",
+      "processor": "AMD Ryzen 5 3600 6-Core Processor",
+      "mem_total": 31.29,
+      "mem_usage": 77.9,
+      "cpu_usage": 4.0,
+      "storage_tote": 67.73,
+      "storage_used": 45.33
+    }
+  ],
+  "pretty_core": "\nDevice Name: hostname\nProcessor: AMD Ryzen 5 3600 6-Core Processor\nOverall CPU Usage: 4.0%\nMemory: 31.29GB\nOverall Memory Usage: 77.9\nOverall Storage Usage 45.33GB out of 67.73\nLeft-Over Storage: 22.4GB",
+  "devices": {
+    "/dev/bus/usb/001/001": {
+      "ID_MODEL_ID": "0002",
+      "ID_MODEL": "xHCI_Host_Controller",
+      "ID_MODEL_FROM_DATABASE": "2.0 root hub",
+      "ID_VENDOR": "Linux_7.0.2-6-hostname_xhci-hcd",
+      "ID_VENDOR_ID": "1d6b",
+      "ID_VENDOR_FROM_DATABASE": "Linux Foundation",
+      "ID_USB_INTERFACES": [
+        "090000"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/001/001",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "Linux_7.0.2-6-hostname_xhci-hcd_xHCI_Host_Controller_0000:02:00.0"
+    },
+    "/dev/bus/usb/001/002": {
+      "ID_MODEL_ID": "0aa7",
+      "ID_MODEL": "0aa7",
+      "ID_MODEL_FROM_DATABASE": "Wireless-AC 3168 Bluetooth",
+      "ID_VENDOR": "8087",
+      "ID_VENDOR_ID": "8087",
+      "ID_VENDOR_FROM_DATABASE": "Intel Corp.",
+      "ID_USB_INTERFACES": [
+        "e00101"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/001/002",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "8087_0aa7"
+    },
+    "/dev/bus/usb/001/003": {
+      "ID_MODEL_ID": "8297",
+      "ID_MODEL": "ITE_Device_8595_",
+      "ID_MODEL_FROM_DATABASE": "IT8297 RGB LED Controller",
+      "ID_VENDOR": "ITE_Tech._Inc.",
+      "ID_VENDOR_ID": "048d",
+      "ID_VENDOR_FROM_DATABASE": "Integrated Technology Express, Inc.",
+      "ID_USB_INTERFACES": [
+        "030101"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/001/003",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "ITE_Tech._Inc._ITE_Device_8595_"
+    },
+    "/dev/bus/usb/002/001": {
+      "ID_MODEL_ID": "0003",
+      "ID_MODEL": "xHCI_Host_Controller",
+      "ID_MODEL_FROM_DATABASE": "3.0 root hub",
+      "ID_VENDOR": "Linux_7.0.2-6-hostname_xhci-hcd",
+      "ID_VENDOR_ID": "1d6b",
+      "ID_VENDOR_FROM_DATABASE": "Linux Foundation",
+      "ID_USB_INTERFACES": [
+        "090000"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/002/001",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "Linux_7.0.2-6-hostname_xhci-hcd_xHCI_Host_Controller_0000:02:00.0"
+    },
+    "/dev/bus/usb/003/001": {
+      "ID_MODEL_ID": "0002",
+      "ID_MODEL": "xHCI_Host_Controller",
+      "ID_MODEL_FROM_DATABASE": "2.0 root hub",
+      "ID_VENDOR": "Linux_7.0.2-6-hostname_xhci-hcd",
+      "ID_VENDOR_ID": "1d6b",
+      "ID_VENDOR_FROM_DATABASE": "Linux Foundation",
+      "ID_USB_INTERFACES": [
+        "090000"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/003/001",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "Linux_7.0.2-6-hostname_xhci-hcd_xHCI_Host_Controller_0000:0b:00.3"
+    },
+    "/dev/bus/usb/004/001": {
+      "ID_MODEL_ID": "0003",
+      "ID_MODEL": "xHCI_Host_Controller",
+      "ID_MODEL_FROM_DATABASE": "3.0 root hub",
+      "ID_VENDOR": "Linux_7.0.2-6-hostname_xhci-hcd",
+      "ID_VENDOR_ID": "1d6b",
+      "ID_VENDOR_FROM_DATABASE": "Linux Foundation",
+      "ID_USB_INTERFACES": [
+        "090000"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/004/001",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "Linux_7.0.2-6-hostname_xhci-hcd_xHCI_Host_Controller_0000:0b:00.3"
+    },
+    "/dev/bus/usb/001/002": {
+      "ID_MODEL_ID": "203b",
+      "ID_MODEL": "Expansion_SW",
+      "ID_MODEL_FROM_DATABASE": "",
+      "ID_VENDOR": "Seagate",
+      "ID_VENDOR_ID": "0bc2",
+      "ID_VENDOR_FROM_DATABASE": "Seagate RSS LLC",
+      "ID_USB_INTERFACES": [
+        "080650",
+        "080662"
+      ],
+      "ID_USB_CLASS_FROM_DATABASE": "",
+      "DEVNAME": "/dev/bus/usb/001/002",
+      "DEVTYPE": "usb_device",
+      "ID_SERIAL": "Seagate_Expansion_SW"
+    }
+  },
+  "vm_states": [
+    {
+      "active_vms": 7,
+      "deactive_vms": 2,
+      "total_vms": 9
+    }
+  ],
+  "pretty_states": "\nActive VMs: 7\nDeactive VMs: 2\nTotal VMs: 9\n",
+  "backup_list": [
+    {
+      "id": "backup-c763cbde-e4ae",
+      "enabled": true,
+      "schedule": "monthly",
+      "retention": 2,
+      "next_run": "2026-11-01T00:00:00",
+      "storage": "local",
+      "scope": "VMIDs: 100,101,102,103,105,109"
+    }
+  ],
+  "backup_pretty": "\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nBackup ID: backup-c763cbde-e4ae\nEnabled: True\nScheduled: monthly\nBackup Retention: 2\nNext Run: 2026-11-01T00:00:00\nStorage Location: local\nSelection of VMs Included: VMIDs: 100,101,102,103,105,109\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n",
+  "ipv4": "169.254.6.2",
+  "ipv6": "lookup failed - [Errno -2] Name or service not known",
+  "virtual_machine_list": [
+    {
+      "id": 100,
+      "name": "MyWebsite",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.39,
+      "cores": 1,
+      "mem_percent": 47.93,
+      "mem_used_gb": 1.92,
+      "mem_allotted_gb": 4.0,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 101,
+      "name": "DocumentationSite",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.29,
+      "cores": 1,
+      "mem_percent": 86.53,
+      "mem_used_gb": 1.73,
+      "mem_allotted_gb": 2.0,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 102,
+      "name": "MediaServer",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.22,
+      "cores": 4,
+      "mem_percent": 92.16,
+      "mem_used_gb": 7.37,
+      "mem_allotted_gb": 8.0,
+      "usb": [
+        "Expansion_SW"
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Apache2Server",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.1,
+      "cores": 4,
+      "mem_percent": 58.37,
+      "mem_used_gb": 1.17,
+      "mem_allotted_gb": 2.0,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 104,
+      "name": "ProxMoxDemo",
+      "node": "hostname",
+      "status": "stopped",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": false,
+      "cpu_percent": 0,
+      "cores": 1,
+      "mem_percent": 0.0,
+      "mem_used_gb": 0.0,
+      "mem_allotted_gb": 4.0,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 105,
+      "name": "AnotherServer",
+      "node": "hostname",
+      "status": "running",
+      "os": "debian",
+      "start_at_boot": true,
+      "cpu_percent": 0.07,
+      "cores": 1,
+      "mem_percent": 52.05,
+      "mem_used_gb": 0.26,
+      "mem_allotted_gb": 0.5,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 106,
+      "name": "SomeVideoGameServer",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.1,
+      "cores": 4,
+      "mem_percent": 34.99,
+      "mem_used_gb": 1.75,
+      "mem_allotted_gb": 5.0,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 108,
+      "name": "WindowsXPProfessional",
+      "node": "hostname",
+      "status": "stopped",
+      "os": "Windows XP",
+      "start_at_boot": false,
+      "cpu_percent": 0,
+      "cores": 1,
+      "mem_percent": 0.0,
+      "mem_used_gb": 0.0,
+      "mem_allotted_gb": 0.5,
+      "usb": "No Devices Detected"
+    },
+    {
+      "id": 109,
+      "name": "FileSharingServer",
+      "node": "hostname",
+      "status": "running",
+      "os": "Linux (2.6+ kernel)",
+      "start_at_boot": true,
+      "cpu_percent": 0.34,
+      "cores": 2,
+      "mem_percent": 81.18,
+      "mem_used_gb": 1.62,
+      "mem_allotted_gb": 2.0,
+      "usb": "No Devices Detected"
+    }
+  ],
+  "vm_pretty": "\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 100\nVM Name: MyWebsite\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.39\nTotal Processors: 1\nMemory Usage Percentage: 47.93%\nMemory Usage Technical: 1.92GB\nMemory Allotted: 4.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 101\nVM Name: DocumentationSite\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.29\nTotal Processors: 1\nMemory Usage Percentage: 86.53%\nMemory Usage Technical: 1.73GB\nMemory Allotted: 2.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 102\nVM Name: MediaServer\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.22\nTotal Processors: 4\nMemory Usage Percentage: 92.16%\nMemory Usage Technical: 7.37GB\nMemory Allotted: 8.0GB\nUSB Device Detected: ['Expansion_SW']\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 103\nVM Name: Apache2Server\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.1\nTotal Processors: 4\nMemory Usage Percentage: 58.37%\nMemory Usage Technical: 1.17GB\nMemory Allotted: 2.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 104\nVM Name: ProxMoxDemo\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: False\nStatus: stopped\nProcessor Usage: 0\nTotal Processors: 1\nMemory Usage Percentage: 0.0%\nMemory Usage Technical: 0.0GB\nMemory Allotted: 4.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 105\nVM Name: AnotherServer\nNode: hostname\n\nOperating System: debian\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.07\nTotal Processors: 1\nMemory Usage Percentage: 52.05%\nMemory Usage Technical: 0.26GB\nMemory Allotted: 0.5GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 106\nVM Name: SomeVideoGameServer\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.1\nTotal Processors: 4\nMemory Usage Percentage: 34.99%\nMemory Usage Technical: 1.75GB\nMemory Allotted: 5.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 108\nVM Name: WindowsXPProfessional\nNode: hostname\n\nOperating System: Windows XP\nStart at Boot: False\nStatus: stopped\nProcessor Usage: 0\nTotal Processors: 1\nMemory Usage Percentage: 0.0%\nMemory Usage Technical: 0.0GB\nMemory Allotted: 0.5GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\nID: 109\nVM Name: FileSharingServer\nNode: hostname\n\nOperating System: Linux (2.6+ kernel)\nStart at Boot: True\nStatus: running\nProcessor Usage: 0.34\nTotal Processors: 2\nMemory Usage Percentage: 81.18%\nMemory Usage Technical: 1.62GB\nMemory Allotted: 2.0GB\nUSB Device Detected: No Devices Detected\n/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\\n"
+}

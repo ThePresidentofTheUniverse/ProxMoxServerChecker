@@ -15,8 +15,8 @@ There are several modules that need to be installed for this program to function
 - usb-monitor 1.23 - https://pypi.org/project/usb-monitor/
 - proxmoxer - https://github.com/proxmoxer/proxmoxer
 - aiosmtpd - https://aiosmtpd.aio-libs.org/en/latest/
-The aiosmtpd module above is so you can test the email system locally. To conduct local testing, find the debug in the main function and set it to *True*.
-**NOTCE:** To setup the aiosmtpd service, type in the following command first in your terminal. It will print out all of the prospective emails into the terminal: *python -m aiosmtpd -n -c aiosmtpd.handlers.Debugging -l localhost:8025*
+<br>The aiosmtpd module above is so you can test the email system locally. To conduct local testing, find the debug in the main function and set it to *True*.
+<br>**NOTICE:** To setup the aiosmtpd service, type in the following command first in your terminal. It will print out all of the prospective emails into the terminal: *python -m aiosmtpd -n -c aiosmtpd.handlers.Debugging -l localhost:8025*
 
 ## Program Features
 This is a large script that essentially pulls a large amount of information from a home-lab running ProxMox that is using virtual machines. The program will pull the following information:
